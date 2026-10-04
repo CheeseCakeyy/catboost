@@ -354,3 +354,35 @@ jobs:
           Rscript -e "install.packages('remotes', Ncpus = parallel::detectCores()); remotes::install_local('catboost_R_package/catboost-R-darwin-universal2.tgz', INSTALL_opts = c('--no-multiarch', '--no-staged-install', '--install-tests'))"
           Rscript -e "install.packages(c('testthat','caret','tibble'), Ncpus = parallel::detectCores()); testthat::test_package('catboost')"
 
+      - name: Set up Node.js for Windows tests
+        if: inputs.os == 'windows'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.0'
+
+      - name: Prepare Node package for Windows tests
+        if: inputs.os == 'windows'
+        shell: pwsh
+        working-directory: catboost/catboost/node-package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm.cmd ci --ignore-scripts
+          npm.cmd exec --yes --package=node-gyp@11.4.2 -- node-gyp configure
+
+      - name: Download model library for Windows Node tests
+        if: inputs.os == 'windows'
+        uses: actions/download-artifact@v8
+        with:
+          name: catboost-model-interface-windows-${{ inputs.machine }}-${{ inputs.artifacts_version }}
+          path: catboost/catboost/node-package/build/catboost/libs/model_interface/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ inputs.artifacts_repository }}
+          run-id: ${{ inputs.artifacts_run_id }}
+
+      - name: Run Windows Node package tests
+        if: inputs.os == 'windows'
+        shell: pwsh
+        working-directory: catboost/catboost/node-package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm.cmd exec --yes --package=node-gyp@11.4.2 -- npm.cmd test
