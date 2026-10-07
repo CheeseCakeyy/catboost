@@ -282,6 +282,45 @@ jobs:
           Set-Location -LiteralPath ${{ github.workspace }}/catboost/catboost/pytest
           python -m pytest -n auto
 
+      - name: Set up Node.js for Linux tests
+        if: inputs.os == 'linux'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.0'
+
+      - name: Prepare Node package for Linux tests
+        if: inputs.os == 'linux'
+        shell: pwsh
+        working-directory: catboost/catboost/node-package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm ci --ignore-scripts
+          npm exec --yes --package=node-gyp@11.4.2 -- node-gyp configure
+
+      - name: Download model library for Linux Node tests
+        if: inputs.os == 'linux'
+        uses: actions/download-artifact@v8
+        with:
+          name: catboost-model-interface-linux-${{ inputs.machine }}-${{ inputs.artifacts_version }}
+          path: catboost/catboost/node-package/build/catboost/libs/model_interface/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ inputs.artifacts_repository }}
+          run-id: ${{ inputs.artifacts_run_id }}
+
+      - name: Prepare Linux model library link
+        if: inputs.os == 'linux'
+        shell: bash
+        working-directory: catboost/catboost/node-package/build/catboost/libs/model_interface
+        run: ln -s libcatboostmodel.so libcatboostmodel.so.1
+
+      - name: Run Linux Node package tests
+        if: inputs.os == 'linux'
+        shell: pwsh
+        working-directory: catboost/catboost/node-package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm exec --yes --package=node-gyp@11.4.2 -- npm test
+
       - name: Run python package tests
         shell: pwsh
         run: |
@@ -386,42 +425,3 @@ jobs:
         run: |
           $PSNativeCommandUseErrorActionPreference = $true
           npm.cmd exec --yes --package=node-gyp@11.4.2 -- npm.cmd test
-
-      - name: Set up Node.js for Linux tests
-        if: inputs.os == 'linux'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.11.0'
-
-      - name: Prepare Node package for Linux tests
-        if: inputs.os == 'linux'
-        shell: pwsh
-        working-directory: catboost/catboost/node-package
-        run: |
-          $PSNativeCommandUseErrorActionPreference = $true
-          npm ci --ignore-scripts
-          npm exec --yes --package=node-gyp@11.4.2 -- node-gyp configure
-
-      - name: Download model library for Linux Node tests
-        if: inputs.os == 'linux'
-        uses: actions/download-artifact@v8
-        with:
-          name: catboost-model-interface-linux-${{ inputs.machine }}-${{ inputs.artifacts_version }}
-          path: catboost/catboost/node-package/build/catboost/libs/model_interface/
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ inputs.artifacts_repository }}
-          run-id: ${{ inputs.artifacts_run_id }}
-
-      - name: Prepare Linux model library link
-        if: inputs.os == 'linux'
-        shell: bash
-        working-directory: catboost/catboost/node-package/build/catboost/libs/model_interface
-        run: ln -s libcatboostmodel.so libcatboostmodel.so.1
-
-      - name: Run Linux Node package tests
-        if: inputs.os == 'linux'
-        shell: pwsh
-        working-directory: catboost/catboost/node-package
-        run: |
-          $PSNativeCommandUseErrorActionPreference = $true
-          npm exec --yes --package=node-gyp@11.4.2 -- npm test
