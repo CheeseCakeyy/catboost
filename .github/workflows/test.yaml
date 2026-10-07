@@ -1,3 +1,4 @@
+# Enable manual test runs in this fork.
 name: Test on all OSes
 
 on:
