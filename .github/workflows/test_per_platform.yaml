@@ -321,6 +321,39 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           npm exec --yes --package=node-gyp@11.4.2 -- npm test
 
+      - name: Set up Node.js for macOS tests
+        if: inputs.os == 'macos'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.0'
+
+      - name: Prepare Node package for macOS tests
+        if: inputs.os == 'macos'
+        shell: pwsh
+        working-directory: catboost/catboost/node-package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm ci --ignore-scripts
+          npm exec --yes --package=node-gyp@11.4.2 -- node-gyp configure
+
+      - name: Download model library for macOS Node tests
+        if: inputs.os == 'macos'
+        uses: actions/download-artifact@v8
+        with:
+          name: catboost-model-interface-darwin-universal2-${{ inputs.artifacts_version }}
+          path: catboost/catboost/node-package/build/catboost/libs/model_interface/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ inputs.artifacts_repository }}
+          run-id: ${{ inputs.artifacts_run_id }}
+
+      - name: Run macOS Node package tests
+        if: inputs.os == 'macos'
+        shell: pwsh
+        working-directory: catboost/catboost/node-package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm exec --yes --package=node-gyp@11.4.2 -- npm test
+
       - name: Run python package tests
         shell: pwsh
         run: |
